@@ -1,0 +1,1850 @@
+type: edu
+files:
+- name: src/Main.java
+  visible: true
+  text: |-
+    import java.io.File;
+    import java.io.FileNotFoundException;
+    import java.util.LinkedList;
+    import java.util.List;
+    import java.util.Scanner;
+
+    public class Main {
+        public static void main(String[] args) {
+            List<String> stationList = DownloadFromFile(new File(args[0]));
+            if (stationList.size() > 2) {
+                for (int i = 0; i < stationList.size() - 2; i++) {
+                    System.out.println(stationList.get(i) + " - " + stationList.get(i + 1) + " - " + stationList.get(i + 2));
+                }
+            }
+        }
+
+        public static List<String> DownloadFromFile(File file){
+            LinkedList<String> lines = new LinkedList<>();
+            lines.add("depot");
+            try (Scanner scanner = new Scanner(file)){
+                while (scanner.hasNextLine()){
+                    lines.add(scanner.nextLine());
+                }
+            } catch (FileNotFoundException e) {
+                System.out.println("Error! Such a file doesn't exist!");
+            }
+            lines.add("depot");
+            return lines;
+        }
+    }
+  learner_created: false
+- name: test/Tests.java
+  visible: false
+  text: |-
+    import org.hyperskill.hstest.dynamic.DynamicTest;
+    import org.hyperskill.hstest.exception.outcomes.WrongAnswer;
+    import org.hyperskill.hstest.stage.StageTest;
+    import org.hyperskill.hstest.testcase.CheckResult;
+    import org.hyperskill.hstest.testing.TestedProgram;
+
+    public class Tests extends StageTest<String> {
+        // multiple line output
+        @DynamicTest(order = 1)
+        CheckResult multipleLineOutputTest() {
+
+            TestedProgram main = new TestedProgram();
+            main.start("./test/lausanne.json");
+            String output = main.execute("/output \"m1\"").trim();
+
+            String[] stations = new String[]{"Renes—Gare", "Epenex", "Crochy", "Cerisaie",
+                "Bassenges", "EPFL", "UNL—Sorge", "Mouline", "UNL—Chemberonne", "Bourdonnette", "Melley",
+                "Provence", "Montelly", "Vigie", "Lausanne—Flon"};
+
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertStations(output, stations);
+
+            stations = new String[]{"Croisettes", "Vennes", "Fourmi", "Sallaz", "CHUV", "Ours",
+                "Riponne M.Bejart", "Bessieres", "Lausanne—Flon", "Lausanne Gare CFF", "Grancy", "Delices", "Jourdils",
+                "Ouchy—Olympique"};
+
+            output = main.execute("/output \"m2\"");
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertStations(output, stations);
+
+            return CheckResult.correct();
+        }
+
+        // addition test
+        @DynamicTest(order = 2)
+        CheckResult additionTest() {
+
+            TestedProgram main = new TestedProgram();
+            main.start("./test/lausanne.json");
+
+            // added a station to the end of the line
+            main.execute("/append \"m1\" \"Test station 1\"");
+            String output = main.execute("/output \"m1\"");
+
+            String[] stations = new String[]{"Renes—Gare", "Epenex", "Crochy", "Cerisaie",
+                "Bassenges", "EPFL", "UNL—Sorge", "Mouline", "UNL—Chemberonne", "Bourdonnette", "Melley",
+                "Provence", "Montelly", "Vigie", "Lausanne—Flon", "Test station 1"};
+
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertStations(output, stations);
+
+            // added another one
+            main.execute("/append \"m1\" \"Test station 2\"");
+            output = main.execute("/output \"m1\"");
+
+            stations = new String[]{"Renes—Gare", "Epenex", "Crochy", "Cerisaie",
+                "Bassenges", "EPFL", "UNL—Sorge", "Mouline", "UNL—Chemberonne", "Bourdonnette", "Melley",
+                "Provence", "Montelly", "Vigie", "Lausanne—Flon", "Test station 1", "Test station 2"};
+
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertStations(output, stations);
+
+            // added one station to the beginning of the line
+            main.execute("/add-head \"m1\" \"Head\"");
+            output = main.execute("/output \"m1\"");
+
+            stations = new String[]{"Head", "Renes—Gare", "Epenex", "Crochy", "Cerisaie",
+                "Bassenges", "EPFL", "UNL—Sorge", "Mouline", "UNL—Chemberonne", "Bourdonnette", "Melley",
+                "Provence", "Montelly", "Vigie", "Lausanne—Flon", "Test station 1", "Test station 2"};
+
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertStations(output, stations
+            );
+
+            return CheckResult.correct();
+        }
+
+        // not existing file check
+        @DynamicTest(order = 3)
+        CheckResult nonexistingFileTest() {
+            TestedProgram main = new TestedProgram();
+            String output = main.start("tHiS_fIlE_DoEs_nOt_ExIsT.txt");
+            if (output.trim().length() == 0) {
+                return CheckResult.wrong("The program did not print anything when the file was not exist. ");
+            }
+            if (output.toLowerCase().startsWith("depot") || output.toLowerCase().endsWith("depot")) {
+                return CheckResult.wrong("It looks like the program did not print an error message when the file was not exist.");
+            }
+            return CheckResult.correct();
+        }
+
+        // output with transfers
+        @DynamicTest(order = 4)
+        CheckResult outputLineWithTransfer() {
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague.json");
+
+            String[][] stations = new String[][]{
+                {"Nemocnice Motol", null},
+                {"Petriny", null},
+                {"Nadrazi Veleslavin", null},
+                {"Borislavka", null},
+                {"Dejvicka", null},
+                {"Hradcanska", null},
+                {"Malostranska", null},
+                {"Staromestska", null},
+                {"Mustek", "Linka B"},
+                {"Muzeum", "Linka C"},
+                {"Namesti Miru", null},
+                {"Jiriho z Podebrad", null},
+                {"Flora", null},
+                {"Zelivskeho", null},
+                {"Strasnicka", null},
+                {"Skalka", null},
+                {"Depo Hostivar", null}
+            };
+
+            String output = main.execute("/output \"Linka A\"");
+            checkDepots(output);
+
+            checkOutputLength(output, stations.length + 2);
+            assertWithTransfer(output, stations);
+
+            return CheckResult.correct();
+        }
+
+        // connections test
+        @DynamicTest(order = 5)
+        CheckResult connectLinesTest() {
+
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague.json");
+
+            String[][] stations = new String[][]{{"Nemocnice Motol", null}, {"Petriny", "Linka C"},
+                {"Nadrazi Veleslavin", null}, {"Borislavka", null}, {"Dejvicka", null}, {"Hradcanska", null},
+                {"Malostranska", null}, {"Staromestska", null}, {"Mustek", "Linka B"}, {"Muzeum", "Linka C"},
+                {"Namesti Miru", null}, {"Jiriho z Podebrad", null}, {"Flora", null}, {"Zelivskeho", null},
+                {"Strasnicka", null}, {"Skalka", null}, {"Depo Hostivar", null}
+            };
+            main.execute("/connect \"Linka C\" \"I.P.Pavlova\" \"Linka A\" \"Petriny\"");
+
+            String output = main.execute("/output \"Linka A\"");
+
+            checkDepots(output);
+            checkOutputLength(output, stations.length + 2);
+            assertWithTransfer(output, stations);
+
+            return CheckResult.correct();
+        }
+
+        @DynamicTest(order = 6)
+        CheckResult simpleRouteTest() {
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague.json");
+
+            String[] correctRoute = {"Petriny", "Nadrazi Veleslavin", "Borislavka", "Dejvicka", "Hradcanska", "Malostranska",
+                "Staromestska", "Mustek", "Muzeum", "Namesti Miru", "Jiriho z Podebrad", "Flora"};
+
+            String[] sOutput = main.execute("/route \"Linka A\" \"Petriny\" \"Linka A\" \"Flora\"").toLowerCase().split("\n");
+
+            if (sOutput.length != correctRoute.length) {
+                return CheckResult.wrong("Your program printed an incorrect number of stations in the route.\n" +
+                    "Expected: " + correctRoute.length + " stations." +
+                    "\nYour output: " + sOutput.length + " stations.");
+            }
+
+            for (int i = 0; i < correctRoute.length; i++) {
+                if (i == 0 && !correctRoute[i].equalsIgnoreCase(sOutput[i])) {
+                    return CheckResult.wrong("The first station in the output should be '" + correctRoute[i] + "'.");
+                } else if (i != 0) {
+                    if (!correctRoute[i].equalsIgnoreCase(sOutput[i])) {
+                        return CheckResult.wrong("After '" + correctRoute[i - 1] + "' should be '" + correctRoute[i] + "'.");
+                    }
+                }
+            }
+
+            return CheckResult.correct();
+        }
+
+        // advanced route test
+        @DynamicTest(order = 7)
+        CheckResult advancedRouteTest() {
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague.json");
+
+            String[] route = {"Vysehrad", "I.P.Pavlova", "Muzeum",
+                "Linka A", "Muzeum", "Mustek",
+                "Linka B", "Mustek", "Namesti Republiky"};
+            String[] sOutput = main.execute("/route \"Linka C\" \"Vysehrad\" \"Linka B\" \"Namesti Republiky\"").split("\n");
+
+            if (sOutput.length != 9) {
+                return CheckResult.wrong("Your program printed an incorrect number of stations in the route.");
+            }
+
+            int index = 0;
+            for (String station : sOutput) {
+                if (!station.toLowerCase().trim().contains(route[index].toLowerCase())) {
+                    return CheckResult.wrong("The route is incorrect. Wrong stations were displayed");
+                }
+                index++;
+            }
+
+            return CheckResult.correct();
+        }
+
+        // simple test with time
+        @DynamicTest(order = 8)
+        CheckResult simpleTime() {
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague_w_time.json");
+
+            String[] route = {"Borislavka", "Dejvicka", "Hradcanska", "Malostranska", "Staromestska", "Mustek", "Muzeum",
+                "Namesti Miru", "Jiriho z Podebrad", "Flora", "44"};
+            String[] sOutput = main.execute("/fastest-route \"Linka A\" \"Borislavka\" \"Linka A\" \"Flora\"").split("\n");
+
+            if (sOutput.length != route.length) {
+                return CheckResult.wrong("Your program printed an incorrect number of stations in the route. Expected 10 stations and the total time!");
+            }
+
+            int index = 0;
+            for (String station : sOutput) {
+                if (!station.toLowerCase().trim().contains(route[index].toLowerCase())) {
+                    return CheckResult.wrong("The route is incorrect. Wrong stations were displayed");
+                }
+                index++;
+            }
+
+            return CheckResult.correct();
+        }
+
+        // advanced test with time
+        @DynamicTest(order = 9)
+        CheckResult advancedTime() {
+            TestedProgram main = new TestedProgram();
+            main.start("./test/prague_w_time.json");
+
+            String[] route = {"Vysehrad", "I.P.Pavlova", "Muzeum", "Hlavni nadrazi", "Florenc",
+                "Linka B", "Florenc", "Namesti Republiky", "29"
+            };
+
+            String[] sOutput = main.execute("/fastest-route \"Linka C\" \"Vysehrad\" \"Linka B\" \"Namesti Republiky\"")
+                .split("\n");
+
+            if (sOutput.length != 9) {
+                return CheckResult.wrong("Your program printed an incorrect number of stations in the route. Expected 8 stations and the total time!");
+            }
+
+            int index = 0;
+            for (String station : sOutput) {
+                if (!station.toLowerCase().trim().contains(route[index].toLowerCase())) {
+                    return CheckResult.wrong("The route is incorrect. Wrong stations were displayed");
+                }
+                index++;
+            }
+
+            return CheckResult.correct();
+        }
+
+        // checks for "depot" at the start and at the end
+        void checkDepots(String output) {
+            output = output.trim().toLowerCase();
+            if (!output.startsWith("depot")) {
+                throw new WrongAnswer("Your output should start with 'depot'.");
+            } else if (!output.endsWith("depot")) {
+                throw new WrongAnswer("Your output should end with 'depot'.");
+            }
+        }
+
+        // checks number of stations in output
+        void checkOutputLength(String output, int correctLength) {
+            int length = output.trim().split("\n").length;
+            if (length != correctLength) {
+                throw new WrongAnswer("You output contains wrong number of lines.\n" +
+                    "Expected: " + correctLength + " lines\n" +
+                    "Your output: " + length + " lines");
+            }
+        }
+
+        // checks stations
+        void assertStations(String output, String[] stations) {
+
+            String[] sOutput = output.trim().split("\n");
+
+            for (int i = 0; i < stations.length; i++) {
+                if (!sOutput[i + 1].equals(stations[i])) {
+                    throw new WrongAnswer("Can't find station '" + stations[i] + "' in the line number " + (i + 2));
+                }
+            }
+        }
+
+        void assertWithTransfer(String output, String[][] stations) {
+
+            String[] sOutput = output.split("\n");
+
+            for (int i = 0; i < stations.length; i++) {
+                String currentLine = sOutput[i + 1].toLowerCase().trim();
+                String currentStation = stations[i][0];
+                String currentTransfer = stations[i][1];
+                if (currentTransfer == null) {
+                    if (!currentLine.equals(currentStation.toLowerCase())) {
+                        throw new WrongAnswer("There is an error in your program's reply. Some stations were not found.");
+                    }
+                } else if (!currentLine.contains(currentStation.toLowerCase()) ||
+                    !currentLine.contains(currentTransfer.toLowerCase())) {
+                    throw new WrongAnswer("Expected transfer to '" + currentTransfer + "' from '" + currentStation + "' station.");
+                }
+            }
+        }
+    }
+  learner_created: false
+- name: test/lausanne.json
+  visible: false
+  text: |-
+    {
+      "m1": {
+        "1": {
+          "name": "Renes—Gare",
+          "transfer": [],
+          "time": 3
+        },
+        "2": {
+          "name": "Epenex",
+          "transfer": [],
+          "time": 2
+        },
+        "3": {
+          "name": "Crochy",
+          "transfer": [],
+          "time": 6
+        },
+        "4": {
+          "name": "Cerisaie",
+          "transfer": [],
+          "time": 5
+        },
+        "5": {
+          "name": "Bassenges",
+          "transfer": [],
+          "time": 4
+        },
+        "6": {
+          "name": "EPFL",
+          "transfer": [],
+          "time": 6
+        },
+        "7": {
+          "name": "UNL—Sorge",
+          "transfer": [],
+          "time": 8
+        },
+        "8": {
+          "name": "Mouline",
+          "transfer": [],
+          "time": 5
+        },
+        "9": {
+          "name": "UNL—Chemberonne",
+          "transfer": [],
+          "time": 4
+        },
+        "10": {
+          "name": "Bourdonnette",
+          "transfer": [],
+          "time": 5
+        },
+        "11": {
+          "name": "Melley",
+          "transfer": [],
+          "time": 7
+        },
+        "12": {
+          "name": "Provence",
+          "transfer": [],
+          "time": 6
+        },
+        "13": {
+          "name": "Montelly",
+          "transfer": [],
+          "time": 5
+        },
+        "14": {
+          "name": "Vigie",
+          "transfer": [],
+          "time": 4
+        },
+        "15": {
+          "name": "Lausanne—Flon",
+          "transfer": [],
+          "time": null
+        }
+      },
+      "m2": {
+        "1": {
+          "name": "Croisettes",
+          "transfer": [],
+          "time": 6
+        },
+        "2": {
+          "name": "Vennes",
+          "transfer": [],
+          "time": 5
+        },
+        "3": {
+          "name": "Fourmi",
+          "transfer": [],
+          "time": 4
+        },
+        "4": {
+          "name": "Sallaz",
+          "transfer": [],
+          "time": 6
+        },
+        "5": {
+          "name": "CHUV",
+          "transfer": [],
+          "time": 5
+        },
+        "6": {
+          "name": "Ours",
+          "transfer": [],
+          "time": 3
+        },
+        "7": {
+          "name": "Riponne M.Bejart",
+          "transfer": [],
+          "time": 4
+        },
+        "8": {
+          "name": "Bessieres",
+          "transfer": [],
+          "time": 6
+        },
+        "9": {
+          "name": "Lausanne—Flon",
+          "transfer": [],
+          "time": 5
+        },
+        "10": {
+          "name": "Lausanne Gare CFF",
+          "transfer": [],
+          "time": 3
+        },
+        "11": {
+          "name": "Grancy",
+          "transfer": [],
+          "time": 4
+        },
+        "12": {
+          "name": "Delices",
+          "transfer": [],
+          "time": 6
+        },
+        "13": {
+          "name": "Jourdils",
+          "transfer": [],
+          "time": 3
+        },
+        "14": {
+          "name": "Ouchy—Olympique",
+          "transfer": [],
+          "time": null
+        }
+      }
+    }
+  learner_created: false
+- name: test/prague.json
+  visible: false
+  text: |-
+    {
+      "Linka A": {
+        "1": {
+          "name": "Nemocnice Motol" ,
+          "transfer": []
+        } ,
+        "2": {
+          "name": "Petriny" ,
+          "transfer": []
+        } ,
+        "3": {
+          "name": "Nadrazi Veleslavin" ,
+          "transfer": []
+        } ,
+        "4": {
+          "name": "Borislavka" ,
+          "transfer": []
+        } ,
+        "5": {
+          "name": "Dejvicka" ,
+          "transfer": []
+        } ,
+        "6": {
+          "name": "Hradcanska" ,
+          "transfer": []
+        } ,
+        "7": {
+          "name": "Malostranska" ,
+          "transfer": []
+        } ,
+        "8": {
+          "name": "Staromestska" ,
+          "transfer": []
+        } ,
+        "9": {
+          "name": "Mustek" ,
+          "transfer": [
+            {
+              "line": "Linka B" ,
+              "station": "Mustek"
+            }
+          ]
+        } ,
+        "10": {
+          "name": "Muzeum" ,
+          "transfer": [
+            {
+              "line": "Linka C" ,
+              "station": "Muzeum"
+            }
+          ]
+        } ,
+        "11": {
+          "name": "Namesti Miru" ,
+          "transfer": []
+        } ,
+        "12": {
+          "name": "Jiriho z Podebrad" ,
+          "transfer": []
+        } ,
+        "13": {
+          "name": "Flora" ,
+          "transfer": []
+        } ,
+        "14": {
+          "name": "Zelivskeho" ,
+          "transfer": []
+        } ,
+        "15": {
+          "name": "Strasnicka" ,
+          "transfer": []
+        } ,
+        "16": {
+          "name": "Skalka" ,
+          "transfer": []
+        } ,
+        "17": {
+          "name": "Depo Hostivar" ,
+          "transfer": []
+        }
+      } ,
+      "Linka B": {
+        "1": {
+          "name": "Cerny Most" ,
+          "transfer": []
+        } ,
+        "2": {
+          "name": "Rajska zahrada" ,
+          "transfer": []
+        } ,
+        "3": {
+          "name": "Hloubetin" ,
+          "transfer": []
+        } ,
+        "4": {
+          "name": "Kolbenova" ,
+          "transfer": []
+        } ,
+        "5": {
+          "name": "Vysocanska" ,
+          "transfer": []
+        } ,
+        "6": {
+          "name": "Ceskomoravska" ,
+          "transfer": []
+        } ,
+        "7": {
+          "name": "Palmovka" ,
+          "transfer": []
+        } ,
+        "8": {
+          "name": "Invalidovna" ,
+          "transfer": []
+        } ,
+        "9": {
+          "name": "Krizikova" ,
+          "transfer": []
+        } ,
+        "10": {
+          "name": "Florenc" ,
+          "transfer": [
+            {
+              "line": "Linka C" ,
+              "station": "Florenc"
+            }
+          ]
+        } ,
+        "11": {
+          "name": "Namesti Republiky" ,
+          "transfer": []
+        } ,
+        "12": {
+          "name": "Mustek" ,
+          "transfer": [
+            {
+              "line": "Linka B" ,
+              "station": "Mustek"
+            }
+          ]
+        } ,
+        "13": {
+          "name": "Narodni trida" ,
+          "transfer": []
+        } ,
+        "14": {
+          "name": "Karlovo namesti" ,
+          "transfer": []
+        } ,
+        "15": {
+          "name": "Andel" ,
+          "transfer": []
+        } ,
+        "16": {
+          "name": "Smichovske nadrazi" ,
+          "transfer": []
+        } ,
+        "17": {
+          "name": "Radlicka" ,
+          "transfer": []
+        } ,
+        "18": {
+          "name": "Jinonice" ,
+          "transfer": []
+        } ,
+        "19": {
+          "name": "Nove Butovice" ,
+          "transfer": []
+        } ,
+        "20": {
+          "name": "Hurka" ,
+          "transfer": []
+        } ,
+        "21": {
+          "name": "Luziny" ,
+          "transfer": []
+        } ,
+        "22": {
+          "name": "Luka" ,
+          "transfer": []
+        } ,
+        "23": {
+          "name": "Stodulky" ,
+          "transfer": []
+        } ,
+        "24": {
+          "name": "Zlicin" ,
+          "transfer": []
+        }
+      } ,
+      "Linka C": {
+        "1": {
+          "name": "Letnany" ,
+          "transfer": []
+        } ,
+        "2": {
+          "name": "Prosek" ,
+          "transfer": []
+        } ,
+        "3": {
+          "name": "Strizkov" ,
+          "transfer": []
+        } ,
+        "4": {
+          "name": "Ladvi" ,
+          "transfer": []
+        } ,
+        "5": {
+          "name": "Kobylisy" ,
+          "transfer": []
+        } ,
+        "6": {
+          "name": "Nadrazi Holesovice" ,
+          "transfer": []
+        } ,
+        "7": {
+          "name": "Vltavska" ,
+          "transfer": []
+        } ,
+        "8": {
+          "name": "Florenc" ,
+          "transfer": [
+            {
+              "line": "Linka B" ,
+              "station": "Florenc"
+            }
+          ]
+        } ,
+        "9": {
+          "name": "Hlavni nadrazi" ,
+          "transfer": []
+        } ,
+        "10": {
+          "name": "Muzeum" ,
+          "transfer": [
+            {
+              "line": "Linka A" ,
+              "station": "Muzeum"
+            }
+          ]
+        } ,
+        "11": {
+          "name": "I.P.Pavlova" ,
+          "transfer": []
+        } ,
+        "12": {
+          "name": "Vysehrad" ,
+          "transfer": []
+        } ,
+        "13": {
+          "name": "Prazskeho povstani" ,
+          "transfer": []
+        } ,
+        "14": {
+          "name": "Pankrac" ,
+          "transfer": []
+        } ,
+        "15": {
+          "name": "Budejovicka" ,
+          "transfer": []
+        } ,
+        "16": {
+          "name": "Kacerov" ,
+          "transfer": []
+        } ,
+        "17": {
+          "name": "Roztyly" ,
+          "transfer": []
+        } ,
+        "18": {
+          "name": "Chodov" ,
+          "transfer": []
+        } ,
+        "19": {
+          "name": "Opatov" ,
+          "transfer": []
+        } ,
+        "20": {
+          "name": "Haje" ,
+          "transfer": []
+        }
+      }
+    }
+  learner_created: false
+- name: src/Graph.java
+  visible: true
+  text: |2-
+
+    import java.util.List;
+    import java.util.PriorityQueue;
+    import java.util.ArrayList;
+    import java.util.Collections;
+
+    public class Graph {
+        private ArrayList<Vertex> vertices;
+        private ArrayList<Edge> edges;
+        private int resultDistance = 0;
+
+        public Graph() {
+            vertices = new ArrayList<>();
+            edges = new ArrayList<>();
+        }
+
+        public void add(String from, String to, int cost) {
+            Edge temp = findEdge(from, to);
+            if (temp != null) {
+                temp.cost = cost;
+            }
+            else {
+                Edge e = new Edge(from, to, cost);
+                edges.add(e);
+            }
+        }
+
+        private Vertex findVertex(String v) {
+            for (Vertex each : vertices) {
+                if (each.value.equals(v))
+                    return each;
+            }
+            return null;
+        }
+
+        private Edge findEdge(Vertex v1, Vertex v2) {
+            for (Edge each : edges) {
+                if (each.from.equals(v1) && each.to.equals(v2)) {
+                    return each;
+                }
+            }
+            return null;
+        }
+
+        private Edge findEdge(String from, String to) {
+            for (Edge each : edges) {
+                if (each.from.value.equals(from) && each.to.value.equals(to)) {
+                    return each;
+                }
+            }
+            return null;
+        }
+        private boolean Dijkstra(String v1) {
+            resetDistances();
+            Vertex source = findVertex(v1);
+            source.minDistance = 0;
+
+            PriorityQueue<Vertex> pq = new PriorityQueue<>();
+            pq.add(source);
+
+            while (!pq.isEmpty()) {
+                Vertex u = pq.poll();
+                for (Vertex v : u.outgoing) {
+                    Edge e = findEdge(u, v);
+                    if (e==null) {
+                        return false;
+                    }
+                    int totalDistance = u.minDistance + e.cost;
+                    if (totalDistance < v.minDistance) {
+                        pq.remove(v);
+                        v.minDistance = totalDistance;
+
+                        v.previous = u;
+                        pq.add(v);
+                    }
+                }
+            }
+
+
+            return true;
+        }
+
+
+        private List<String> getShortestPath(Vertex target) {
+            List<String> path = new ArrayList<String>();
+
+            if (target.minDistance==Integer.MAX_VALUE) {
+                path.add("No path found");
+                return path;
+            }
+
+            int neededDistance = -1;
+
+            for (Vertex v = target; v != null; v = v.previous) {
+                path.add(v.value);
+                if (neededDistance == -1) {
+                    neededDistance = v.minDistance;
+                }
+            }
+
+            resultDistance = neededDistance;
+
+            Collections.reverse(path);
+            return path;
+        }
+
+        public int getResultDistance() {
+            return resultDistance;
+        }
+
+        private void resetDistances() {
+            for (Vertex each : vertices) {
+                each.minDistance = Integer.MAX_VALUE;
+                each.previous = null;
+            }
+        }
+
+        public List<String> getPath(String from, String to) {
+
+            if (Dijkstra(from) == false) {
+                return null;
+            }
+
+            List<String> path = getShortestPath(findVertex(to));
+            return path;
+        }
+
+        class Vertex implements Comparable<Vertex> {
+            String value;
+
+            Vertex previous = null;
+            int minDistance = Integer.MAX_VALUE;
+
+            List<Vertex> incoming;
+            List<Vertex> outgoing;
+
+            public Vertex(String value) {
+                this.value = value;
+                incoming = new ArrayList<>();
+                outgoing = new ArrayList<>();
+            }
+
+            @Override
+            public int compareTo(Vertex other)
+            {
+                return Integer.compare(minDistance, other.minDistance);
+            }
+
+            public void addIncoming(Vertex vert)
+            {
+                incoming.add(vert);
+            }
+
+            public void addOutgoing(Vertex vert)
+            {
+                outgoing.add(vert);
+            }
+        }
+
+        class Edge {
+            Vertex from;
+            Vertex to;
+            int cost;
+
+            public Edge(String v1, String v2, int cost) {
+                from = findVertex(v1);
+                if (from == null)
+                {
+                    from = new Vertex(v1);
+                    vertices.add(from);
+                }
+                to = findVertex(v2);
+                if (to == null)
+                {
+                    to = new Vertex(v2);
+                    vertices.add(to);
+                }
+                this.cost = cost;
+
+                from.addOutgoing(to);
+                to.addIncoming(from);
+            }
+
+            @Override
+            public String toString()
+            {
+                return "Edge From: " + from.value + " to: " + to.value + " cost: " + cost;
+            }
+        }
+
+        public String edgesToString()
+        {
+            String retval = "";
+            for (Edge each : edges)
+            {
+                retval += each + "\n";
+            }
+            return retval;
+        }
+    }
+  learner_created: true
+- name: src/HyperMetro.java
+  visible: true
+  text: |
+    import com.google.gson.Gson;
+
+    import java.io.FileNotFoundException;
+    import java.io.FileReader;
+    import java.io.IOException;
+    import java.util.*;
+    import java.util.regex.Matcher;
+    import java.util.regex.Pattern;
+
+    public class HyperMetro {
+
+        private final Map<String, MetroLine> metroLines = new HashMap<>();
+
+        public HyperMetro(String fileName) {
+            loadMetroLines(fileName);
+        }
+
+        public void runApp() {
+            while (true) {
+                String[] parsedCommand = getUserCommand();
+                if (parsedCommand[0].equals("/exit")) {
+                    System.exit(0);
+                } else if (parsedCommand[0].equals("/append") && parsedCommand.length == 3) {
+                    MetroLine ml = metroLines.get(parsedCommand[1]);
+                    if (ml == null) {
+                        ml = new MetroLine(parsedCommand[1]);
+                        metroLines.put(parsedCommand[1], ml);
+                    }
+                    ml.appendMetroStop(parsedCommand[2]);
+                } else if (parsedCommand[0].equals("/add-head") && parsedCommand.length == 3) {
+                    MetroLine ml = metroLines.get(parsedCommand[1]);
+                    if (ml == null) {
+                        ml = new MetroLine(parsedCommand[1]);
+                        metroLines.put(parsedCommand[1], ml);
+                    }
+                    ml.addHeadMetroStop(parsedCommand[2]);
+                } else if (parsedCommand[0].equals("/remove") && parsedCommand.length == 3) {
+                    MetroLine ml = metroLines.get(parsedCommand[1]);
+                    if (ml == null) {
+                        System.out.println("Invalid command");
+                    } else {
+                        ml.removeMetroStop(parsedCommand[2]);
+                    }
+                } else if (parsedCommand[0].equals("/output") && parsedCommand.length == 2) {
+                    MetroLine ml = metroLines.get(parsedCommand[1]);
+                    if (ml == null) {
+                        System.out.println("Invalid command");
+                    } else {
+                        System.out.println(ml);
+                    }
+                } else if (parsedCommand[0].equals("/connect") && parsedCommand.length == 5) {
+                    MetroLine ml1 = metroLines.get(parsedCommand[1]);
+                    MetroLine ml2 = metroLines.get(parsedCommand[3]);
+                    if (ml1 != null && ml2 != null) {
+                        MetroStop ms1 = ml1.getMetroStopByName(parsedCommand[2]);
+                        MetroStop ms2 = ml2.getMetroStopByName(parsedCommand[4]);
+                        if (ms1 != null && ms2 != null) {
+                            ms1.addTransferLine(ms2);
+                            ms2.addTransferLine(ms1);
+                        } else {
+                            System.out.println("Invalid command");
+                        }
+                    }
+                } else {
+                    System.out.println("Invalid command");
+                }
+            }
+        }
+
+        private String[] getUserCommand() {
+            Scanner scanner = new Scanner(System.in);
+            String[] parsedCommand = null;
+            while (true) {
+                try {
+                    parsedCommand = parseCommand(scanner.nextLine());
+                } catch (Exception e) {
+                    System.out.println("Invalid command");
+                }
+                if (parsedCommand == null || parsedCommand.length == 0 || !parsedCommand[0].startsWith("/")) {
+                    System.out.println("Invalid command");
+                } else {
+                    break;
+                }
+            }
+            return parsedCommand;
+        }
+
+        private String[] parseCommand(String command) {
+            Pattern regex = Pattern.compile("[^\\s\"']+|\"([^\"]*)\"");
+            Matcher regexMatcher = regex.matcher(command);
+            List<String> matchList = new ArrayList<>();
+            while (regexMatcher.find()) {
+                if (regexMatcher.group(1) != null) {
+                    matchList.add(regexMatcher.group(1));
+                } else {
+                    matchList.add(regexMatcher.group());
+                }
+            }
+            return matchList.toArray(String[]::new);
+        }
+
+        public void loadMetroLines(String fileName) {
+            MetroLineData metroLineData = null;
+            Gson gson = new Gson();
+            try (FileReader fr = new FileReader(fileName)) {
+                metroLineData = gson.fromJson(fr, MetroLineData.class);
+            } catch (FileNotFoundException e) {
+                System.out.println("Error! Such a file doesn't exist!");
+                System.exit(-1);
+            } catch (IOException e) {
+                System.out.println(e.getMessage());
+                System.exit(-1);
+            }
+            Map<MetroStop, MetroLineData.TransferData[]> transfers = new HashMap<>();
+            for (String metroLineName : metroLineData.keySet()) {
+                Map<String, MetroLineData.MetroStationData> metroStations = metroLineData.get(metroLineName);
+                MetroLine ml = new MetroLine(metroLineName);
+                int[] stationIds = metroStations.keySet().stream().mapToInt(Integer::parseInt).sorted().toArray();
+                for (int stationId : stationIds) {
+                    MetroLineData.MetroStationData metroStationData = metroStations.get(String.valueOf(stationId));
+                    ml.appendMetroStop(metroStationData.name);
+                    if (metroStationData.transfer != null && metroStationData.transfer.length > 0) {
+                        transfers.put(ml.getMetroStopByName(metroStationData.name), metroStationData.transfer);
+                    }
+                }
+                metroLines.put(metroLineName, ml);
+            }
+            for (MetroStop ms : transfers.keySet()) {
+                for (MetroLineData.TransferData td : transfers.get(ms)) {
+                    MetroLine line = metroLines.get(td.line);
+                    MetroStop stop = line.getMetroStopByName(td.station);
+                    stop.addTransferLine(ms);
+                    ms.addTransferLine(stop);
+                }
+            }
+        }
+
+        static class MetroLineData extends TreeMap<String, TreeMap<String, MetroLineData.MetroStationData>> {
+            static class MetroStationData {
+                public String name;
+                public TransferData[] transfer;
+            }
+
+            static class TransferData {
+                public String line;
+                public String station;
+            }
+        }
+    }
+  learner_created: true
+- name: src/MetroNameComparator.java
+  visible: true
+  text: |2
+
+
+    import java.util.Comparator;
+
+    public class MetroNameComparator implements Comparator<String> {
+        @Override
+        public int compare(String o1, String o2) {
+            return Integer.compare(Integer.parseInt(o1, 10), Integer.parseInt(o2, 10));
+        }
+    }
+  learner_created: true
+- name: src/MetroStop.java
+  visible: true
+  text: |
+    import java.util.HashSet;
+    import java.util.Set;
+
+    public class MetroStop implements Comparable<MetroStop> {
+        private final int number;
+        private final String name;
+        private final MetroLine metroLine;
+        private final Set<MetroStop> transferLines = new HashSet<>();
+
+        private MetroStop previousStop = null;
+        private MetroStop nextStop = null;
+
+        public MetroStop(String name, MetroLine metroLine) {
+            super();
+            this.name = name;
+            this.metroLine = metroLine;
+            this.number = MetroLine.nextStopNumber();
+        }
+
+        public int getNumber() {
+            return number;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public MetroStop getNextStop() {
+            return nextStop;
+        }
+
+        public void setNextStop(MetroStop nextStop) {
+            this.nextStop = nextStop;
+        }
+
+        public MetroStop getPreviousStop() {
+            return previousStop;
+        }
+
+        public void setPreviousStop(MetroStop previousStop) {
+            this.previousStop = previousStop;
+        }
+
+        public MetroLine getMetroLine() {
+            return metroLine;
+        }
+
+        public Set<MetroStop> getTransferLines() {
+            return transferLines;
+        }
+
+        public void addTransferLine(MetroStop metroStop) {
+            if (!this.equals(metroStop)) {
+                this.transferLines.add(metroStop);
+            }
+        }
+
+        @Override
+        public int hashCode() {
+            return Integer.valueOf(number).hashCode();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (obj instanceof MetroStop) {
+                MetroStop ms = (MetroStop) obj;
+                return ms.getNumber() == this.getNumber();
+            }
+            return false;
+        }
+
+        @Override
+        public int compareTo(MetroStop o) {
+            return this.getNumber() - o.getNumber();
+        }
+    }
+  learner_created: true
+- name: src/MetroInputPoint.java
+  visible: true
+  text: |
+    import java.util.List;
+
+    public class MetroInputPoint {
+        public String name;
+        public List<MetroTransfer> transfer;
+        public List<String> nextPoints;
+        public List<String> previousPoints;
+        public String stationName;
+        public int time;
+
+        public MetroInputPoint() {}
+
+        public MetroInputPoint(String name, int time) {
+            this.name = name;
+            this.time = time;
+        }
+
+        public MetroInputPoint(String name, List<String> nextPoints,
+                               List<String> previousPoints, List<MetroTransfer> transfer, int time, String stationName) {
+            this.name = name;
+            this.nextPoints = nextPoints;
+            this.previousPoints = previousPoints;
+            this.transfer = transfer;
+            this.time = time;
+            this.stationName = stationName;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setStationName(String name) {
+            this.stationName = name;
+        }
+
+        public List<MetroTransfer> getTransfer() {
+            return transfer;
+        }
+
+        public List<String> getNextPoints() {
+            return nextPoints;
+        }
+
+        public List<String> getPreviousPoints() {
+            return nextPoints;
+        }
+
+        @Override
+        public String toString() {
+            return "MetroInputPoint{" +
+                    "name='" + name + '\'' +
+                    ", transfer=" + transfer +
+                    ", nextPoints=" + nextPoints +
+                    ", previousPoints=" + previousPoints +
+                    ", stationName='" + stationName + '\'' +
+                    ", time=" + time +
+                    '}';
+        }
+    }
+  learner_created: true
+- name: src/example.json.txt
+  visible: true
+  text: |-
+    {
+        "Metro-Railway": {
+            "3": {
+                "name": "Baker street",
+                "transfer": [{
+                    "line": "Hammersmith-and-City",
+                    "station": "Baker street"
+                }]
+            },
+            "1": {
+                "name": "Bishops-road",
+                "transfer": []
+            },
+            "2": {
+                "name": "Edgver road",
+                "transfer": []
+            }
+        },
+        "Hammersmith-and-City": {
+            "2": {
+                "name": "Westbourne-park",
+                "transfer": []
+            },
+            "1": {
+                "name": "Hammersmith",
+                "transfer": []
+            },
+            "3": {
+                "name": "Baker street",
+                "transfer": [{
+                    "line": "Metro-Railway",
+                    "station": "Baker street"
+                }]
+            }
+        }
+    }
+  learner_created: true
+- name: src/MetroTransfer.java
+  visible: true
+  text: |2
+
+
+    public class MetroTransfer {
+        private String line;
+        private String station;
+
+        public String getLine() {
+            return line;
+        }
+
+        public String getStation() {
+            return station;
+        }
+
+        @Override
+        public String toString() {
+            return "MetroTransfer{" +
+                    "line='" + line + '\'' +
+                    ", station='" + station + '\'' +
+                    '}';
+        }
+
+        public MetroTransfer(String line, String station) {
+            this.line = line;
+            this.station = station;
+        }
+    }
+  learner_created: true
+- name: src/MetroLine.java
+  visible: true
+  text: |-
+    public class MetroLine {
+
+        private static int nextStopNumber = 1;
+        private final String name;
+
+        private MetroStop head = null;
+        private MetroStop tail = null;
+
+        public MetroLine(String name) {
+            this.name = name;
+        }
+
+        public void appendMetroStop(String stopName) {
+            MetroStop ms = new MetroStop(stopName, this);
+            if (head == null) {
+                head = ms;
+                tail = ms;
+                head.setPreviousStop(null);
+                tail.setNextStop(null);
+            } else {
+                tail.setNextStop(ms);
+                ms.setPreviousStop(tail);
+                tail = ms;
+                tail.setNextStop(null);
+            }
+        }
+
+        public void addHeadMetroStop(String stopName) {
+            MetroStop ms = new MetroStop(stopName, this);
+            if (head == null) {
+                head = ms;
+                tail = ms;
+                head.setPreviousStop(null);
+                tail.setNextStop(null);
+            } else {
+                ms.setPreviousStop(null);
+                ms.setNextStop(head);
+                head.setPreviousStop(ms);
+                this.head = ms;
+            }
+        }
+
+        public void removeMetroStop(String stopName) {
+            MetroStop currentStop = this.getMetroStopByName(stopName);
+            if (currentStop != null) {
+                MetroStop previousStop = currentStop.getPreviousStop();
+                MetroStop nextStop = currentStop.getNextStop();
+                if (previousStop != null) {
+                    previousStop.setNextStop(nextStop);
+                } else {
+                    head = nextStop;
+                }
+                if (nextStop != null) {
+                    nextStop.setPreviousStop(previousStop);
+                } else {
+                    tail = previousStop;
+                }
+            }
+        }
+
+        public MetroStop getMetroStopByName(String stopName) {
+            MetroStop currentStop = this.head;
+            while (currentStop != null) {
+                if (currentStop.getName().equals(stopName)) {
+                    return currentStop;
+                }
+                currentStop = currentStop.getNextStop();
+            }
+            return null;
+        }
+
+        public static int nextStopNumber() {
+            return nextStopNumber++;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            MetroStop currentStop = this.head;
+            sb.append("depot\n");
+            while (currentStop != null) {
+                sb.append(String.format("%s", currentStop.getName()));
+                for (MetroStop ms : currentStop.getTransferLines()) {
+                    sb.append(String.format(" - %s (%s)", ms.getName(), ms.getMetroLine().getName()));
+                }
+                sb.append('\n');
+                currentStop = currentStop.getNextStop();
+            }
+            sb.append("depot\n");
+            return sb.toString();
+        }
+    }
+  learner_created: true
+- name: src/MetroPoint.java
+  visible: true
+  text: |-
+    public class MetroPoint {
+        private String name;
+
+        public MetroPoint(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+
+    }
+  learner_created: true
+- name: test/prague_w_time.json
+  visible: false
+  text: |-
+    {
+      "Linka A": {
+        "0": {
+          "name": "Nemocnice Motol",
+          "transfer": [],
+          "time": 5
+        },
+        "1": {
+          "name": "Petriny",
+          "transfer": [],
+          "time": 5
+        },
+        "2": {
+          "name": "Nadrazi Veleslavin",
+          "transfer": [],
+          "time": 3
+        },
+        "3": {
+          "name": "Borislavka",
+          "transfer": [],
+          "time": 3
+        },
+        "4": {
+          "name": "Dejvicka",
+          "transfer": [],
+          "time": 4
+        },
+        "5": {
+          "name": "Hradcanska",
+          "transfer": [],
+          "time": 4
+        },
+        "6": {
+          "name": "Malostranska",
+          "transfer": [],
+          "time": 1
+        },
+        "7": {
+          "name": "Staromestska",
+          "transfer": [],
+          "time": 7
+        },
+        "8": {
+          "name": "Mustek",
+          "transfer": [
+            {
+              "line": "Linka B",
+              "station": "Mustek"
+            }
+          ],
+          "time": 8
+        },
+        "9": {
+          "name": "Muzeum",
+          "transfer": [
+            {
+              "line": "Linka C",
+              "station": "Muzeum"
+            }
+          ],
+          "time": 5
+        },
+        "10": {
+          "name": "Namesti Miru",
+          "transfer": [],
+          "time": 7
+        },
+        "11": {
+          "name": "Jiriho z Podebrad",
+          "transfer": [],
+          "time": 5
+        },
+        "12": {
+          "name": "Flora",
+          "transfer": [],
+          "time": 7
+        },
+        "13": {
+          "name": "Zelivskeho",
+          "transfer": [],
+          "time": 1
+        },
+        "14": {
+          "name": "Strasnicka",
+          "transfer": [],
+          "time": 7
+        },
+        "15": {
+          "name": "Skalka",
+          "transfer": [],
+          "time": 2
+        },
+        "16": {
+          "name": "Depo Hostivar",
+          "transfer": [],
+          "time": null
+        }
+      },
+      "Linka B": {
+        "0": {
+          "name": "Cerny Most",
+          "transfer": [],
+          "time": 3
+        },
+        "1": {
+          "name": "Rajska zahrada",
+          "transfer": [],
+          "time": 5
+        },
+        "2": {
+          "name": "Hloubetin",
+          "transfer": [],
+          "time": 4
+        },
+        "3": {
+          "name": "Kolbenova",
+          "transfer": [],
+          "time": 1
+        },
+        "4": {
+          "name": "Vysocanska",
+          "transfer": [],
+          "time": 6
+        },
+        "5": {
+          "name": "Ceskomoravska",
+          "transfer": [],
+          "time": 5
+        },
+        "6": {
+          "name": "Palmovka",
+          "transfer": [],
+          "time": 7
+        },
+        "7": {
+          "name": "Invalidovna",
+          "transfer": [],
+          "time": 5
+        },
+        "8": {
+          "name": "Krizikova",
+          "transfer": [],
+          "time": 1
+        },
+        "9": {
+          "name": "Florenc",
+          "transfer": [
+            {
+              "line": "Linka C",
+              "station": "Florenc"
+            }
+          ],
+          "time": 5
+        },
+        "10": {
+          "name": "Namesti Republiky",
+          "transfer": [],
+          "time": 3
+        },
+        "11": {
+          "name": "Mustek",
+          "transfer": [
+            {
+              "line": "Linka A",
+              "station": "Mustek"
+            }
+          ],
+          "time": 7
+        },
+        "12": {
+          "name": "Narodni trida",
+          "transfer": [],
+          "time": 3
+        },
+        "13": {
+          "name": "Karlovo namesti",
+          "transfer": [],
+          "time": 4
+        },
+        "14": {
+          "name": "Andel",
+          "transfer": [],
+          "time": 3
+        },
+        "15": {
+          "name": "Smichovske nadrazi",
+          "transfer": [],
+          "time": 3
+        },
+        "16": {
+          "name": "Radlicka",
+          "transfer": [],
+          "time": 4
+        },
+        "17": {
+          "name": "Jinonice",
+          "transfer": [],
+          "time": 7
+        },
+        "18": {
+          "name": "Nove Butovice",
+          "transfer": [],
+          "time": 2
+        },
+        "19": {
+          "name": "Hurka",
+          "transfer": [],
+          "time": 7
+        },
+        "20": {
+          "name": "Luziny",
+          "transfer": [],
+          "time": 5
+        },
+        "21": {
+          "name": "Luka",
+          "transfer": [],
+          "time": 6
+        },
+        "22": {
+          "name": "Stodulky",
+          "transfer": [],
+          "time": 7
+        },
+        "23": {
+          "name": "Zlicin",
+          "transfer": [],
+          "time": null
+        }
+      },
+      "Linka C": {
+        "0": {
+          "name": "Letnany",
+          "transfer": [],
+          "time": 3
+        },
+        "1": {
+          "name": "Prosek",
+          "transfer": [],
+          "time": 7
+        },
+        "2": {
+          "name": "Strizkov",
+          "transfer": [],
+          "time": 5
+        },
+        "3": {
+          "name": "Ladvi",
+          "transfer": [],
+          "time": 4
+        },
+        "4": {
+          "name": "Kobylisy",
+          "transfer": [],
+          "time": 5
+        },
+        "5": {
+          "name": "Nadrazi Holesovice",
+          "transfer": [],
+          "time": 7
+        },
+        "6": {
+          "name": "Vltavska",
+          "transfer": [],
+          "time": 2
+        },
+        "7": {
+          "name": "Florenc",
+          "transfer": [
+            {
+              "line": "Linka B",
+              "station": "Florenc"
+            }
+          ],
+          "time": 7
+        },
+        "8": {
+          "name": "Hlavni nadrazi",
+          "transfer": [],
+          "time": 2
+        },
+        "9": {
+          "name": "Muzeum",
+          "transfer": [
+            {
+              "line": "Linka A",
+              "station": "Muzeum"
+            }
+          ],
+          "time": 5
+        },
+        "10": {
+          "name": "I.P.Pavlova",
+          "transfer": [],
+          "time": 5
+        },
+        "11": {
+          "name": "Vysehrad",
+          "transfer": [],
+          "time": 4
+        },
+        "12": {
+          "name": "Prazskeho povstani",
+          "transfer": [],
+          "time": 7
+        },
+        "13": {
+          "name": "Pankrac",
+          "transfer": [],
+          "time": 5
+        },
+        "14": {
+          "name": "Budejovicka",
+          "transfer": [],
+          "time": 5
+        },
+        "15": {
+          "name": "Kacerov",
+          "transfer": [],
+          "time": 4
+        },
+        "16": {
+          "name": "Roztyly",
+          "transfer": [],
+          "time": 7
+        },
+        "17": {
+          "name": "Chodov",
+          "transfer": [],
+          "time": 6
+        },
+        "18": {
+          "name": "Opatov",
+          "transfer": [],
+          "time": 5
+        },
+        "19": {
+          "name": "Haje",
+          "transfer": [],
+          "time": null
+        }
+      }
+    }
+  learner_created: false
+feedback_link: https://hyperskill.org/projects/120/stages/652/implement#comment
+status: Solved
+feedback:
+  message: Congratulations!
+  time: Fri, 15 Jul 2022 14:12:19 UTC
+record: 5

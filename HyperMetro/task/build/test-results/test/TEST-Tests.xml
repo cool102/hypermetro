@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Tests" tests="1" skipped="0" failures="0" errors="0" timestamp="2022-07-15T14:13:34" hostname="DESKTOP-HS4DRCO" time="0.058">
+  <properties/>
+  <testcase name="start" classname="Tests" time="0.058"/>
+  <system-out><![CDATA[?[1;31m
+Start test 1?[0m
+?[1;31m
+Start test 2?[0m
+?[1;31m
+Start test 3?[0m
+?[1;31m
+Start test 4?[0m
+?[1;31m
+Start test 5?[0m
+?[1;31m
+Start test 6?[0m
+?[1;31m
+Start test 7?[0m
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>
